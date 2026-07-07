@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 
 class User(models.Model):
     name=models.CharField(max_length=100)
@@ -11,26 +12,26 @@ class User(models.Model):
 
 
 class Employer(models.Model):
-    user=models.OneToOneField(User,on_delete=models.CASCADE)
-    company_name=models.CharField(max_length=100)
-    website=models.URLField()
-    location=models.CharField(max_length=100)
+    user=models.OneToOneField(settings.AUTH_USER_MODEL,on_delete=models.CASCADE)
+    company_name = models.CharField(max_length=100, blank=True)
+    website = models.URLField(blank=True)
+    location = models.CharField(max_length=100, blank=True)
 
     def __str__(self):
         return self.company_name
 
 
 class Candidate(models.Model):
-    user=models.OneToOneField(User,on_delete=models.CASCADE)
-    resume=models.FileField(upload_to="resumes/")
-    skills=models.TextField()
-    education=models.CharField(max_length=200)
+    user=models.OneToOneField(settings.AUTH_USER_MODEL,on_delete=models.CASCADE)
+    resume=models.FileField(upload_to="resumes/",blank=True,null=True)
+    skills=models.TextField(blank=True)
+    education=models.CharField(max_length=200,blank=True)
     experience=models.PositiveBigIntegerField(default=0)
-    phone=models.CharField(max_length=15)
-    address=models.TextField()
+    phone=models.CharField(max_length=15,blank=True)
+    address=models.TextField(blank=True)
 
     def __str__(self):
-        return self.user.name
+        return self.user.username
     
     
 class Job(models.Model):
@@ -52,6 +53,6 @@ class Application(models.Model):
     status=models.CharField(max_length=20,default="Applied")
 
     def __str__(self):
-        return f"{self.candidate.user.name} - {self.job.title}"
+        return f"{self.candidate.user.username} - {self.job.title}"
 
 
