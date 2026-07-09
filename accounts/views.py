@@ -4,6 +4,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
+from .permissions import IsAdmin
 
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -39,3 +40,13 @@ class LogoutView(APIView):
                 {"error":"Invalid Token"},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        
+class AdminTestView(APIView):
+    permission_classes=[IsAuthenticated,IsAdmin]
+    def get(self,request):
+        print("View Executed")
+        return Response({
+            "message":"Welcome Admin",
+            "user":request.user.username,
+            "role":request.user.role
+        })
