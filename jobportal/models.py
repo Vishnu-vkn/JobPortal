@@ -1,21 +1,12 @@
 from django.db import models
 from django.conf import settings
 
-class User(models.Model):
-    name=models.CharField(max_length=100)
-    email=models.EmailField(unique=True)
-    password=models.CharField(max_length=255)
-    role=models.CharField(max_length=20)
-
-    def __str__(self):
-        return self.name
-
-
 class Employer(models.Model):
     user=models.OneToOneField(settings.AUTH_USER_MODEL,on_delete=models.CASCADE)
     company_name = models.CharField(max_length=100, blank=True)
     website = models.URLField(blank=True)
     location = models.CharField(max_length=100, blank=True)
+    is_deleted=models.BooleanField(default=False)
 
     def __str__(self):
         return self.company_name
@@ -26,9 +17,14 @@ class Candidate(models.Model):
     resume=models.FileField(upload_to="resumes/",blank=True,null=True)
     skills=models.TextField(blank=True)
     education=models.CharField(max_length=200,blank=True)
-    experience=models.PositiveBigIntegerField(default=0)
+    experience=models.DecimalField(
+        max_digits=4,
+        decimal_places=1,
+        default=0
+    )
     phone=models.CharField(max_length=15,blank=True)
     address=models.TextField(blank=True)
+    is_deleted=models.BooleanField(default=False)
 
     def __str__(self):
         return self.user.username

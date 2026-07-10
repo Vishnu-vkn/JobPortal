@@ -4,6 +4,7 @@ from .models import CustomUser
 
 from jobportal.models import Employer,Candidate
 
+"""
 @receiver(post_save,sender=CustomUser)
 def create_profile(sender,instance,created,**kwargs):
     if created:
@@ -12,3 +13,4 @@ def create_profile(sender,instance,created,**kwargs):
 
         elif instance.role==CustomUser.Role.CANDIDATE:
             Candidate.objects.create(user=instance)
+"""
