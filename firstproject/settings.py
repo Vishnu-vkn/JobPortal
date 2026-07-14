@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'jobportal',
     'accounts',
     "rest_framework_simplejwt.token_blacklist",
+    "django_filters"
 ]
 
 MIDDLEWARE = [
@@ -135,6 +136,10 @@ REST_FRAMEWORK = {
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
     "EXCEPTION_HANDLER": "utils.exception_handler.custom_exception_handler",
+    "DEFAULT_FILTER_BACKENDS": [
+    "django_filters.rest_framework.DjangoFilterBackend"],
+    "DEFAULT_PAGINATION_CLASS": "firstproject.pagination.CustomPagination",
+    "PAGE_SIZE": 5,
 }
 
 SIMPLE_JWT = {

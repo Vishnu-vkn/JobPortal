@@ -6,11 +6,14 @@ from rest_framework.response import Response
 from rest_framework import status
 import os
 from rest_framework.views import APIView 
+from rest_framework.filters import SearchFilter
+from django_filters.rest_framework import DjangoFilterBackend
 
 class EmployerViewSet(viewsets.ModelViewSet):
-    queryset=Employer.objects.all()
+    queryset=Employer.objects.select_related("user")
     serializer_class=EmployerSerializer
     permission_classes=[IsAuthenticated]
+    filter_backends=[DjangoFilterBackend,SearchFilter]
 
     def get_queryset(self):
         if self.request.user.is_staff:
@@ -33,9 +36,18 @@ class EmployerViewSet(viewsets.ModelViewSet):
 
     
 class CandidateViewSet(viewsets.ModelViewSet):
-    queryset=Candidate.objects.all()
+    queryset=Candidate.objects.select_related("user")
     serializer_class=CandidateSerializer
     permission_classes=[IsAuthenticated]
+    
+    filter_backends=[DjangoFilterBackend,SearchFilter]
+    filterset_fields={
+        "experience":["exact","gte","lte","gt","lt"],
+        "is_deleted":["exact"]
+    }
+
+    search_fields=["skills","education","phone","address","user__username","user__email"]
+
 
     def get_queryset(self):
         if self.request.user.is_staff:
