@@ -9,7 +9,19 @@ from rest_framework.views import APIView
 from rest_framework.filters import SearchFilter
 from django_filters.rest_framework import DjangoFilterBackend
 
-class EmployerViewSet(viewsets.ModelViewSet):
+#Code Refactoring
+class SoftDeleteMixin:
+    def destroy(self,request,*args,**kwargs):
+        instance=self.get_object()
+        instance.is_deleted=True
+        instance.save()
+
+        return Response(
+            {"message":"Profile Deleted Successfully"},
+            status=status.HTTP_200_OK
+        )
+
+class EmployerViewSet(SoftDeleteMixin,viewsets.ModelViewSet):
     queryset=Employer.objects.select_related("user")
     serializer_class=EmployerSerializer
     permission_classes=[IsAuthenticated]
@@ -23,19 +35,9 @@ class EmployerViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
-        
-    def destroy(self, request, *args, **kwargs):
-        instance=self.get_object()
-        instance.is_deleted=True
-        instance.save()
-
-        return Response(
-            { "Message" : "Profile Deleted Successfully" },
-            status=status.HTTP_200_OK
-        )
 
     
-class CandidateViewSet(viewsets.ModelViewSet):
+class CandidateViewSet(SoftDeleteMixin,viewsets.ModelViewSet):
     queryset=Candidate.objects.select_related("user")
     serializer_class=CandidateSerializer
     permission_classes=[IsAuthenticated]
@@ -58,15 +60,6 @@ class CandidateViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
-    def destroy(self, request, *args, **kwargs):
-        instance=self.get_object()
-        instance.is_deleted=True
-        instance.save()
-
-        return Response(
-            { "Message" : "Profile Deleted Successfully" },
-            status=status.HTTP_200_OK
-        )
     
 class ResumeUploadView(APIView):
     permission_classes=[IsAuthenticated]
