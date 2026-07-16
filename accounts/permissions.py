@@ -7,7 +7,9 @@ class IsAdmin(BasePermission):
     
 class IsEmployer(BasePermission):
     def has_permission(self, request, view):
-        return request.user.role==CustomUser.Role.EMPLOYER
+        return  ( request.user.role==CustomUser.Role.EMPLOYER
+        or request.user.is_staff
+        )
     
 class IsCandidate(BasePermission):
     def has_permission(self, request, view):

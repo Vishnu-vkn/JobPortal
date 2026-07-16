@@ -1,6 +1,6 @@
 from rest_framework import viewsets
-from .models import Employer,Candidate
-from .serializers import EmployerSerializer,CandidateSerializer
+from .models import Employer,Candidate , Job
+from .serializers import EmployerSerializer,CandidateSerializer,JobSerializer
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
@@ -8,6 +8,7 @@ import os
 from rest_framework.views import APIView 
 from rest_framework.filters import SearchFilter
 from django_filters.rest_framework import DjangoFilterBackend
+from accounts.permissions import IsEmployer
 
 #Code Refactoring
 class SoftDeleteMixin:
@@ -103,3 +104,17 @@ class ResumeUploadView(APIView):
             status=status.HTTP_200_OK
         )
     
+class JobViewSet(viewsets.ModelViewSet):
+    queryset=Job.objects.all()
+    serializer_class=JobSerializer
+    permission_classes=[IsAuthenticated,IsEmployer]
+
+    def perform_create(self, serializer):
+        serializer.save(employer=self.request.user.employer)
+
+    def get_queryset(self):
+        if self.request.user.is_staff:
+            return Job.objects.all()
+        
+        return Job.objects.filter(employer=self.request.user.employer)
+

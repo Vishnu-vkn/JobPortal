@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Employer,Candidate
+from .models import Employer,Candidate,Job
 
 class EmployerSerializer(serializers.ModelSerializer):
     class Meta:
@@ -12,3 +12,9 @@ class CandidateSerializer(serializers.ModelSerializer):
         model=Candidate
         fields="__all__"
         read_only_fields=["user"]
+
+class JobSerializer(serializers.ModelSerializer):
+    class Meta:
+        model=Job
+        fields="__all__"
+        read_only_fields = ["employer"]
