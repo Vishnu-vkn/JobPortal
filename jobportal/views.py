@@ -1,14 +1,17 @@
 from rest_framework import viewsets
 from .models import Employer,Candidate , Job
 from .serializers import EmployerSerializer,CandidateSerializer,JobSerializer
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.generics import ListAPIView 
 import os
 from rest_framework.views import APIView 
 from rest_framework.filters import SearchFilter
 from django_filters.rest_framework import DjangoFilterBackend
 from accounts.permissions import IsEmployer
+from django.db.models import Q
+from firstproject.pagination import CustomPagination
 
 #Code Refactoring
 class SoftDeleteMixin:
@@ -117,4 +120,74 @@ class JobViewSet(viewsets.ModelViewSet):
             return Job.objects.all()
         
         return Job.objects.filter(employer=self.request.user.employer)
+    
+#API for All Active Jobs
+class PublicJobListView(ListAPIView):
+    serializer_class=JobSerializer
+    permission_classes=[AllowAny]
+    pagination_class=CustomPagination
+
+    def get_queryset(self):
+        queryset=queryset = Job.objects.filter(status=True)
+    
+        #filtering
+        location=self.request.query_params.get("location")
+        job_type=self.request.query_params.get("job_type")
+        skill=self.request.query_params.get("skill")
+        salary_min=self.request.query_params.get("salary_min")
+        salary_max=self.request.query_params.get("salary_max")
+        experience_min=self.request.query_params.get("experience_min")
+        experience_max=self.request.query_params.get("experience_max")
+
+        if location:
+            queryset=queryset.filter(location__icontains=location)
+        if job_type:
+            queryset=queryset.filter(job_type=job_type)
+        if skill:
+            queryset=queryset.filter(skills__icontains=skill)
+        if salary_min:
+            queryset=queryset.filter(salary__gte=salary_min)
+        if salary_max:
+            queryset=queryset.filter(salary__lte=salary_max)
+
+        if experience_min:
+            queryset=queryset.filter(experience__gte=experience_min)
+        if experience_max:
+            queryset=queryset.filter(experience__lte=experience_max)
+
+        #searching
+        search=self.request.query_params.get("search")
+
+        if search:
+            queryset=queryset.filter(
+                Q(title__icontains=search) |
+                Q(description__icontains=search) |
+                Q(skills__icontains=search) |
+                Q(location__icontains=search)
+            )
+
+
+
+        return queryset
+
+
+#API for Latest Jobs
+class LatestJobView(ListAPIView):
+    serializer_class=JobSerializer
+    permission_classes=[AllowAny]
+
+    def get_queryset(self):
+        return Job.objects.filter(status=True).order_by("-created_at") #minus symbol at front (descending order)-newest jobs first
+    
+#API for Featured Jobs
+class FeaturedJobView(ListAPIView):
+    serializer_class=JobSerializer
+    permission_classes=[AllowAny]
+
+    def get_queryset(self):
+        return Job.objects.filter(
+            status=True,
+            is_featured=True
+        )    
+    
 

@@ -45,6 +45,7 @@ class Job(models.Model):
     location=models.CharField(max_length=100)
     job_type=models.CharField(max_length=20,choices=JobType.choices,default=JobType.FULL_TIME)
     status=models.BooleanField(default=True)
+    is_featured = models.BooleanField(default=False)
     deadline=models.DateField()
     created_at=models.DateTimeField(auto_now_add=True)
     updated_at=models.DateTimeField(auto_now=True)
