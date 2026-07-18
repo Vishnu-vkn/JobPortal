@@ -1,7 +1,7 @@
 from rest_framework import viewsets
-from .models import Employer,Candidate , Job
-from .serializers import EmployerSerializer,CandidateSerializer,JobSerializer
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from .models import Employer,Candidate , Job,Application
+from .serializers import EmployerSerializer,CandidateSerializer,JobSerializer,ApplicationSerializer
+from rest_framework.permissions import IsAuthenticated, AllowAny 
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.generics import ListAPIView 
@@ -9,9 +9,11 @@ import os
 from rest_framework.views import APIView 
 from rest_framework.filters import SearchFilter
 from django_filters.rest_framework import DjangoFilterBackend
-from accounts.permissions import IsEmployer
+from accounts.permissions import IsEmployer ,IsCandidate
 from django.db.models import Q
 from firstproject.pagination import CustomPagination
+from django.shortcuts import get_object_or_404
+from rest_framework.generics import RetrieveAPIView
 
 #Code Refactoring
 class SoftDeleteMixin:
@@ -191,3 +193,75 @@ class FeaturedJobView(ListAPIView):
         )    
     
 
+#API for Applying Job
+class ApplyJobView(APIView):
+    permission_classes=[IsAuthenticated , IsCandidate]
+
+    def post(self,request,job_id):
+        job=get_object_or_404(Job,id=job_id)  #step 1 get the job
+        candidate=request.user.candidate  #step 2 get candidate
+        if not candidate.resume:   #step 3  check resume
+            return Response(
+                {
+                    "error":"Please Upload your resume before applying"
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not job.status:  #step 4 check job status
+            return Response(
+                {
+                    "error":"This job is no longer accepting applications"
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if Application.objects.filter(   #step 5 duplicate check
+            candidate=candidate,
+            job=job
+        ).exists():
+            return Response(
+                {
+                    "error":"You have already applied for this job "
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        #step 6 create application
+        application=Application.objects.create(
+            candidate=candidate,
+            job=job,
+            resume_snapshot=candidate.resume
+        )
+
+        #step 7 serialize response
+        serializer=ApplicationSerializer(application)
+        return Response(
+            {
+                "message":"Job Applied Successfully",
+                "data":serializer.data
+            },
+            status=status.HTTP_201_CREATED
+        )
+
+        
+class MyApplicationView(ListAPIView):
+    permission_classes=[IsAuthenticated,IsCandidate]
+    serializer_class=ApplicationSerializer
+    
+    def get_queryset(self):
+        return Application.objects.filter(
+            candidate=self.request.user.candidate
+        ).select_related("job")
+
+
+    
+class MyApplicationDetailView(RetrieveAPIView):  #retrieveapiview return one object
+    serializer_class=ApplicationSerializer
+    permission_classes=[IsAuthenticated,IsCandidate]
+
+    def get_object(self):
+        return get_object_or_404(
+            Application,
+            id=self.kwargs["pk"],
+            candidate=self.request.user.candidate
+        )

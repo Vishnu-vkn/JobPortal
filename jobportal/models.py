@@ -52,14 +52,34 @@ class Job(models.Model):
 
     def __str__(self):
         return self.title
+
     
 class Application(models.Model):
-    candidate=models.ForeignKey(Candidate,on_delete=models.CASCADE)
-    job=models.ForeignKey(Job,on_delete=models.CASCADE)
+        
+    class Status(models.TextChoices):
+        APPLIED="Applied","Applied"
+        REVIEWING="Reviewing","Reviewing"
+        SHORTLISTED="Shortlisted","Shortlisted"
+        REJECTED="Rejected","Rejected"
+        HIRED="Hired","Hired"
+
+    candidate=models.ForeignKey(Candidate,on_delete=models.CASCADE,related_name="applications")
+    job=models.ForeignKey(Job,on_delete=models.CASCADE,related_name="applications")
     applied_at=models.DateTimeField(auto_now_add=True)
-    status=models.CharField(max_length=20,default="Applied")
+    status=models.CharField(max_length=20,choices=Status.choices,default=Status.APPLIED)
+    resume_snapshot=models.FileField(upload_to="application_resumes/",blank=True,null=True)
+
+    class Meta:
+        constraints=[
+            models.UniqueConstraint(
+                fields=["candidate","job"],
+                name="unique_candidate_job"
+            )
+        ]
 
     def __str__(self):
         return f"{self.candidate.user.username} - {self.job.title}"
+    
+
 
 
