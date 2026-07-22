@@ -31,3 +31,8 @@ class ApplicationSerializer(serializers.ModelSerializer):
             "status",
             "applied_at"
         )
+
+class ApplicationStatusSerializer(serializers.ModelSerializer):
+    class Meta:
+        model=Application
+        fields=["status"]

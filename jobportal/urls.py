@@ -1,7 +1,7 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 from .views import EmployerViewSet,CandidateViewSet,ResumeUploadView,JobViewSet,PublicJobListView,LatestJobView,FeaturedJobView,ApplyJobView
-from .views import LatestJobView,FeaturedJobView,ApplyJobView,MyApplicationView,MyApplicationDetailView
+from .views import LatestJobView,FeaturedJobView,ApplyJobView,MyApplicationView,MyApplicationDetailView,ApplicationStatusUpdateView
 
 
 router=DefaultRouter()
@@ -18,7 +18,8 @@ urlpatterns=[
     path("jobs/featured/",FeaturedJobView.as_view(),name="featured-jobs"),
     path("jobs/<int:job_id>/apply/",ApplyJobView.as_view(),name="apply-job"),
     path("applications/",MyApplicationView.as_view(),name="my-applications"),
-    path("applications/<int:pk>/",MyApplicationDetailView.as_view(),name="application-detail")
+    path("applications/<int:pk>/",MyApplicationDetailView.as_view(),name="application-detail"),
+    path("applications/<int:pk>/status/",ApplicationStatusUpdateView.as_view(),name="application-status-update")
 ]
 
 urlpatterns+=router.urls

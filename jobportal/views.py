@@ -1,10 +1,10 @@
 from rest_framework import viewsets
-from .models import Employer,Candidate , Job,Application
-from .serializers import EmployerSerializer,CandidateSerializer,JobSerializer,ApplicationSerializer
+from .models import Employer,Candidate , Job,Application,ApplicationStatusLog
+from .serializers import EmployerSerializer,CandidateSerializer,JobSerializer,ApplicationSerializer,ApplicationStatusSerializer
 from rest_framework.permissions import IsAuthenticated, AllowAny 
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.generics import ListAPIView 
+from rest_framework.generics import ListAPIView , UpdateAPIView
 import os
 from rest_framework.views import APIView 
 from rest_framework.filters import SearchFilter
@@ -265,3 +265,65 @@ class MyApplicationDetailView(RetrieveAPIView):  #retrieveapiview return one obj
             id=self.kwargs["pk"],
             candidate=self.request.user.candidate
         )
+    
+class ApplicationStatusUpdateView(UpdateAPIView):
+    queryset=Application.objects.all()
+    serializer_class=ApplicationStatusSerializer
+    permission_classes=[IsAuthenticated]
+    lookup_field="pk"
+
+    def get_object(self):
+        application=get_object_or_404(
+            Application,
+            pk=self.kwargs["pk"],
+            job__employer=self.request.user.employer
+
+        )
+        return application
+    
+    def update(self,request,*args,**kwargs):
+        application=self.get_object()
+        current_status=application.status
+        allowed_transitions = {
+        Application.Status.APPLIED: [
+            Application.Status.SHORTLISTED,
+            Application.Status.REJECTED,
+         ],
+
+        Application.Status.SHORTLISTED: [
+            Application.Status.INTERVIEW_SCHEDULED,
+            Application.Status.REJECTED,
+        ],
+
+        Application.Status.INTERVIEW_SCHEDULED: [
+            Application.Status.SELECTED,
+            Application.Status.REJECTED,
+        ],
+
+        Application.Status.REJECTED: [],
+
+        Application.Status.SELECTED: [],
+        }
+
+        new_status=request.data.get("status")
+
+        if new_status not in allowed_transitions[current_status]:
+            return Response(
+                {
+                    
+                 "detail": f"Cannot change status from '{current_status}' to '{new_status}'."
+
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        response= super().update(request,*args,**kwargs)
+
+        ApplicationStatusLog.objects.create(
+            application=application,
+            previous_status=current_status,
+            new_status=new_status,
+            changed_by=request.user.employer
+        )
+
+        return response

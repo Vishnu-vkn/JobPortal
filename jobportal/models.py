@@ -58,10 +58,10 @@ class Application(models.Model):
         
     class Status(models.TextChoices):
         APPLIED="Applied","Applied"
-        REVIEWING="Reviewing","Reviewing"
         SHORTLISTED="Shortlisted","Shortlisted"
+        INTERVIEW_SCHEDULED="Interview Scheduled","Interview Scheduled"
         REJECTED="Rejected","Rejected"
-        HIRED="Hired","Hired"
+        SELECTED="Selected","Selected"
 
     candidate=models.ForeignKey(Candidate,on_delete=models.CASCADE,related_name="applications")
     job=models.ForeignKey(Job,on_delete=models.CASCADE,related_name="applications")
@@ -79,6 +79,19 @@ class Application(models.Model):
 
     def __str__(self):
         return f"{self.candidate.user.username} - {self.job.title}"
+
+
+class ApplicationStatusLog(models.Model):
+    application=models.ForeignKey(Application,on_delete=models.CASCADE,related_name="status_logs")
+    previous_status=models.CharField(max_length=30,choices=Application.Status.choices)
+    new_status=models.CharField(max_length=30,choices=Application.Status.choices)
+    changed_by=models.ForeignKey(Employer,on_delete=models.CASCADE,related_name="status_updates")
+    changed_at=models.DateTimeField(auto_now_add=True)
+    class Meta:
+        ordering = ["-changed_at"]
+
+    def __str__(self):
+        return f"{self.application} | {self.previous_status} → {self.new_status} | {self.changed_by}"
     
 
 
