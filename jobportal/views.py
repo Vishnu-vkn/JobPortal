@@ -327,3 +327,101 @@ class ApplicationStatusUpdateView(UpdateAPIView):
         )
 
         return response
+    
+#This API manages the jobs posted by the employer.
+class EmployerJobListView(ListAPIView):
+    serializer_class=JobSerializer
+    permission_classes=[IsAuthenticated,IsEmployer]
+    pagination_class=CustomPagination
+
+    def get_queryset(self):
+        employer=self.request.user.employer
+        return Job.objects.filter(employer=employer).select_related("employer").order_by("-created_at")
+    
+#This API Employer Job Update API.
+class EmployerJobUpdateView(UpdateAPIView):
+    serializer_class=JobSerializer
+    permission_classes=[IsAuthenticated,IsEmployer]
+
+    def get_queryset(self):
+        employer=self.request.user.employer
+        return Job.objects.filter(employer=employer).select_related("employer")
+
+#This API used for closing an job
+class EmployerCloseJobView(UpdateAPIView):
+    serializer_class=JobSerializer
+    permission_classes=[IsAuthenticated,IsEmployer]
+
+    def get_queryset(self):
+        return Job.objects.filter(employer=self.request.user.employer)
+    
+    def patch(self,request,*args,**kwargs):
+        job=self.get_object()
+        job.status=False
+        job.save()
+
+        return Response(
+            {
+                "message":"Job Closed Successfully"
+            },
+            status=status.HTTP_200_OK
+        )
+    
+class EmployerApplicationListView(ListAPIView):
+    serializer_class=ApplicationSerializer
+    permission_classes=[IsAuthenticated,IsEmployer]
+
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    filterset_fields = ["status"]
+    search_fields = [
+        "candidate__user__first_name",
+        "candidate__user__last_name",
+        "candidate__user__email",
+    ]
+
+    def get_queryset(self):
+        job=get_object_or_404(Job,pk=self.kwargs["pk"],employer=self.request.user.employer)
+
+        return(
+            Application.objects.filter(job=job)
+            .select_related("candidate","job","candidate__user")
+            .order_by("-applied_at")
+        )
+
+
+#APIView is the best choice because we're computing statistics rather than retrieving a single model.
+#API for Employer Dashboard Analytics
+class EmployerDashboardAPI(APIView):
+    permission_classes=[IsAuthenticated,IsEmployer]
+
+    def get(self,request):
+        employer=request.user.employer
+
+        jobs=Job.objects.filter(employer=employer)
+
+        total_jobs=jobs.count()
+        active_jobs=jobs.filter(status=True).count()
+        closed_jobs=jobs.filter(status=False).count()
+
+        applications=Application.objects.filter(job__employer=employer)
+
+        total_applications=applications.count()
+
+        shortlisted=applications.filter(
+            status=Application.Status.SHORTLISTED
+        ).count()
+
+        shortlist_ratio=(
+            round((shortlisted/total_applications)*100,2)
+            if total_applications>0
+            else 0
+        )
+
+        return Response({
+            "total_jobs":total_jobs,
+            "active_jobs":active_jobs,
+            "closed_jobs":closed_jobs,
+            "total_applications":total_applications,
+            "shortlisted":shortlisted,
+            "shortlist_ratio":f"{shortlist_ratio}%"        
+        })
