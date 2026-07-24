@@ -1,6 +1,7 @@
 from rest_framework import viewsets
-from .models import Employer,Candidate , Job,Application,ApplicationStatusLog
-from .serializers import EmployerSerializer,CandidateSerializer,JobSerializer,ApplicationSerializer,ApplicationStatusSerializer
+from .models import Employer,Candidate , Job,Application,ApplicationStatusLog,SavedJob
+from .serializers import EmployerSerializer,CandidateSerializer,JobSerializer,ApplicationSerializer,ApplicationStatusSerializer,RecentApplicationSerializer
+from .serializers import ApplicationStatusLogSerializer ,  SavedJobSerializer
 from rest_framework.permissions import IsAuthenticated, AllowAny 
 from rest_framework.response import Response
 from rest_framework import status
@@ -425,3 +426,142 @@ class EmployerDashboardAPI(APIView):
             "shortlisted":shortlisted,
             "shortlist_ratio":f"{shortlist_ratio}%"        
         })
+
+
+#API for Candidate Dashboard API
+class CandidateDashboardAPI(APIView):
+    permission_classes=[IsAuthenticated,IsCandidate]
+
+    def get(self,request):
+        candidate=request.user.candidate
+        applications=Application.objects.filter(candidate=candidate)
+        total_applications=applications.count()
+
+        applied = applications.filter(
+        status=Application.Status.APPLIED
+        ).count()
+
+        shortlisted = applications.filter(
+        status=Application.Status.SHORTLISTED
+        ).count()
+
+        interview_scheduled = applications.filter(
+        status=Application.Status.INTERVIEW_SCHEDULED
+        ).count()
+
+        selected = applications.filter(
+        status=Application.Status.SELECTED
+        ).count()
+
+        rejected = applications.filter(
+        status=Application.Status.REJECTED
+        ).count()
+
+        recent_applications=(
+            applications.select_related("job").order_by("-applied_at")[:5]
+        )
+
+        serializer = RecentApplicationSerializer(recent_applications,many=True)
+
+        return Response({
+            "total_applications":total_applications,
+            "applied":applied,
+            "shortlisted":shortlisted,
+            "interview_scheduled":interview_scheduled,
+            "selected":selected,
+            "rejected":rejected,
+            "recent_applications":serializer.data
+        })
+
+class ApplicationTimelineView(APIView):
+    permission_classes=[IsAuthenticated,IsCandidate]
+
+    def get(self,request,pk):
+        candidate=request.user.candidate
+        application=get_object_or_404(
+            Application,
+            id=pk,
+            candidate=candidate
+        )
+
+        timeline=(
+            application.status_logs.all()
+        )
+
+        serializer=ApplicationStatusLogSerializer(timeline,many=True)
+        return Response({
+            "current_status": application.status,
+            "timeline":serializer.data
+            })
+
+
+class SaveJobView(APIView):
+    permission_classes = [IsAuthenticated, IsCandidate]
+
+    def post(self, request, pk):
+        candidate = request.user.candidate
+
+        job = get_object_or_404(Job, id=pk)
+
+        saved_job, created = SavedJob.objects.get_or_create(  #get_or_create() first checks whether the record already exists:
+            candidate=candidate,
+            job=job
+        )
+
+        if created:
+            return Response(
+                {"message": "Job saved successfully."},
+                status=status.HTTP_201_CREATED
+            )
+
+        return Response(
+            {"message": "Job already saved."},
+            status=status.HTTP_200_OK
+        )
+
+class UnsaveJobView(APIView):
+    permission_classes = [IsAuthenticated, IsCandidate]
+
+    def delete(self, request, pk):
+
+        candidate = request.user.candidate
+
+        saved_job = get_object_or_404(
+            SavedJob,
+            candidate=candidate,
+            job_id=pk
+        )
+
+        saved_job.delete()
+
+        return Response(
+            {"message": "Job removed from saved jobs."},
+            status=status.HTTP_200_OK
+        )
+
+class SavedJobListView(ListAPIView):
+    permission_classes = [IsAuthenticated, IsCandidate]
+    serializer_class = SavedJobSerializer
+
+    def get_queryset(self):
+        candidate = self.request.user.candidate
+
+        return SavedJob.objects.filter(
+            candidate=candidate
+        ).select_related("job")
+        
+#API for Profile-based Recommendations
+class RecommendedJobListView(ListAPIView):
+    permission_classes=[IsAuthenticated,IsCandidate]
+    serializer_class=JobSerializer
+
+    def get_queryset(self):
+        candidate=self.request.user.candidate
+        candidate_skills=candidate.skills
+        candidate_experience=candidate.experience
+
+        return Job.objects.filter(
+            status=True,
+            experience__lte=candidate_experience,
+            skills__icontains=candidate_skills,
+        )

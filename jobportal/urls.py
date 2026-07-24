@@ -3,7 +3,9 @@ from rest_framework.routers import DefaultRouter
 from .views import EmployerViewSet,CandidateViewSet,ResumeUploadView,JobViewSet,PublicJobListView,LatestJobView,FeaturedJobView,ApplyJobView
 from .views import LatestJobView,FeaturedJobView,ApplyJobView,MyApplicationView,MyApplicationDetailView,ApplicationStatusUpdateView
 from .views import EmployerJobListView,EmployerJobUpdateView,EmployerCloseJobView,EmployerApplicationListView
-from .views import EmployerDashboardAPI
+from .views import EmployerDashboardAPI,CandidateDashboardAPI , ApplicationTimelineView , SaveJobView,UnsaveJobView , SavedJobListView
+from .views import RecommendedJobListView
+
 
 router=DefaultRouter()
 
@@ -25,7 +27,13 @@ urlpatterns=[
     path("employer/jobs/<int:pk>/",EmployerJobUpdateView.as_view(),name="employer_job_update"),
     path("employer/jobs/<int:pk>/close/",EmployerCloseJobView.as_view(),name="employer_job_close"),
     path("employer/jobs/<int:pk>/applications/",EmployerApplicationListView.as_view(),name="employer_application_list"),
-    path("employer/dashboard/",EmployerDashboardAPI.as_view(),name="employer_dashboard")
+    path("employer/dashboard/",EmployerDashboardAPI.as_view(),name="employer_dashboard"),
+    path("candidate/dashboard/",CandidateDashboardAPI.as_view(),name="candidate_dashboard"),
+    path("candidate/applications/<int:pk>/timeline/",ApplicationTimelineView.as_view(),name="application-timeline",),
+    path("candidate/jobs/<int:pk>/save/",SaveJobView.as_view(),name="save-job",),
+    path("candidate/jobs/<int:pk>/unsave/",UnsaveJobView.as_view(),name="unsave-job",),
+    path("candidate/savedjobs/",SavedJobListView.as_view(),name="saved-job-list"),
+    path("candidate/recommendedjobs/",RecommendedJobListView.as_view(),name="recommendedjobs")
 ]
 
 urlpatterns+=router.urls

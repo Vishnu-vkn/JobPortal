@@ -92,6 +92,33 @@ class ApplicationStatusLog(models.Model):
 
     def __str__(self):
         return f"{self.application} | {self.previous_status} → {self.new_status} | {self.changed_by}"
+
+class SavedJob(models.Model):
+
+    candidate = models.ForeignKey(
+        Candidate,
+        on_delete=models.CASCADE,
+        related_name="saved_jobs"
+    )
+
+    job = models.ForeignKey(
+        Job,
+        on_delete=models.CASCADE,
+        related_name="saved_by"
+    )
+
+    saved_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["candidate", "job"],
+                name="unique_saved_job"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.candidate.user.username} - {self.job.title}"
     
 
 
