@@ -7,8 +7,9 @@ from rest_framework.permissions import IsAuthenticated
 from .permissions import IsAdmin
 
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .serializers import SignupSerializer
+from .serializers import SignupSerializer,MyTokenObtainPairSerializer
 
 class SignupView(APIView):
     def post(self,request):
@@ -50,3 +51,9 @@ class AdminTestView(APIView):
             "user":request.user.username,
             "role":request.user.role
         })
+
+
+class MyTokenObtainPairView(TokenObtainPairView):
+    serializer_class = MyTokenObtainPairSerializer
+
+    

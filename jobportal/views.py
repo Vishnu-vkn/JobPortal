@@ -1,8 +1,9 @@
 from rest_framework import viewsets
-from .models import Employer,Candidate , Job,Application,ApplicationStatusLog,SavedJob
+from rest_framework import generics
+from .models import Employer,Candidate , Job,Application,ApplicationStatusLog,SavedJob,AuditLog
 from .serializers import EmployerSerializer,CandidateSerializer,JobSerializer,ApplicationSerializer,ApplicationStatusSerializer,RecentApplicationSerializer
-from .serializers import ApplicationStatusLogSerializer ,  SavedJobSerializer
-from rest_framework.permissions import IsAuthenticated, AllowAny 
+from .serializers import ApplicationStatusLogSerializer ,  SavedJobSerializer,AuditLogSerializer
+from rest_framework.permissions import IsAuthenticated, AllowAny ,IsAdminUser
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.generics import ListAPIView , UpdateAPIView
@@ -15,6 +16,11 @@ from django.db.models import Q
 from firstproject.pagination import CustomPagination
 from django.shortcuts import get_object_or_404
 from rest_framework.generics import RetrieveAPIView
+from rest_framework.exceptions import PermissionDenied
+from accounts.models import CustomUser
+from django.utils import timezone
+from datetime import timedelta
+
 
 #Code Refactoring
 class SoftDeleteMixin:
@@ -116,7 +122,12 @@ class JobViewSet(viewsets.ModelViewSet):
     permission_classes=[IsAuthenticated,IsEmployer]
 
     def perform_create(self, serializer):
-        serializer.save(employer=self.request.user.employer)
+        employer=self.request.user.employer
+
+        if not employer.is_approved:
+            raise PermissionDenied("Your account is waiting approval")
+
+        serializer.save(employer=employer)
 
     def get_queryset(self):
         if self.request.user.is_staff:
@@ -565,3 +576,137 @@ class RecommendedJobListView(ListAPIView):
             experience__lte=candidate_experience,
             skills__icontains=candidate_skills,
         )
+
+class ApproveEmployerView(APIView):
+    permission_classes=[IsAdminUser]
+
+    def patch(self,request,pk):
+        employer=get_object_or_404(Employer,pk=pk)
+
+        employer.is_approved=True
+        employer.save()
+
+        AuditLog.objects.create(
+        admin=request.user,
+        action=f"Approved employer: {employer.company_name}"
+        )
+
+        return Response(
+            {"message":"Employer approved Successfully"},
+            status=status.HTTP_200_OK
+        )
+    
+class BlockUserView(APIView):
+    permission_classes=[IsAdminUser]
+
+    def patch(self,request,pk):
+        user=get_object_or_404(CustomUser,pk=pk)
+
+        user.is_blocked = not user.is_blocked
+        user.save()
+
+        AuditLog.objects.create(
+        admin=request.user,
+        action=f"Blocked user: {user.username}"
+)
+
+        return Response(
+            {
+                "message": "User blocked"
+                if user.is_blocked
+                else "User unblocked"
+            },
+            status=status.HTTP_200_OK,
+        )
+
+class AdminJobListView(generics.ListAPIView):
+    queryset = Job.objects.all()
+    serializer_class = JobSerializer
+    permission_classes = [IsAdminUser]
+
+
+class AdminJobDeleteView(generics.DestroyAPIView):
+    queryset = Job.objects.all()
+    permission_classes = [IsAdminUser]
+
+    def perform_destroy(self, instance):
+
+        AuditLog.objects.create(
+            admin=self.request.user,
+            action=f"Deleted job: {instance.title}"
+        )
+
+        instance.delete()
+
+
+class AdminDashboardView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+
+        data = {
+            "total_users": CustomUser.objects.count(),
+            "total_employers": Employer.objects.count(),
+            "total_candidates": Candidate.objects.count(),
+            "total_jobs": Job.objects.count(),
+            "total_applications": Application.objects.count(),
+        }
+
+        return Response(data)
+
+class UserGrowthView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        today = timezone.now().date()
+
+        data = {
+            "today": CustomUser.objects.filter(
+                date_joined__date=today
+            ).count(),
+
+            "last_7_days": CustomUser.objects.filter(
+                date_joined__date__gte=today - timedelta(days=7)
+            ).count(),
+
+            "last_30_days": CustomUser.objects.filter(
+                date_joined__date__gte=today - timedelta(days=30)
+            ).count(),
+        }
+
+        return Response(data)
+
+class JobActivityView(APIView):
+    permission_classes = [IsAdminUser]
+    def get(self, request):
+        data = {
+            "total_jobs": Job.objects.count(),
+            "open_jobs": Job.objects.filter(status=True).count(),
+            "closed_jobs": Job.objects.filter(status=False).count(),
+            "featured_jobs": Job.objects.filter(is_featured=True).count(),
+        }
+
+        return Response(data)
+
+class FlagJobView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def patch(self, request, pk):
+        job = get_object_or_404(Job, pk=pk)
+
+        job.is_flagged = True
+        job.save()
+
+        AuditLog.objects.create(
+        admin=request.user,
+        action=f"Flagged job: {job.title}"
+)
+
+        return Response({
+            "message": "Job flagged successfully."
+        })
+
+class AuditLogListView(generics.ListAPIView):
+    queryset = AuditLog.objects.all().order_by("-created_at")
+    serializer_class = AuditLogSerializer
+    permission_classes = [IsAdminUser]

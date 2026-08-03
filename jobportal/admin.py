@@ -1,9 +1,10 @@
 from django.contrib import admin
-from .models import  Employer, Candidate, Job, Application,ApplicationStatusLog
+from .models import  Employer, Candidate, Job, Application,ApplicationStatusLog,AuditLog
 
 
 admin.site.register(Job)
 admin.site.register(Application)
+admin.site.register(AuditLog)
 
 @admin.register(ApplicationStatusLog)
 class ApplicationStatusLogAdmin(admin.ModelAdmin):

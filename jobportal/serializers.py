@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Employer,Candidate,Job,Application , ApplicationStatusLog , SavedJob
+from .models import Employer,Candidate,Job,Application , ApplicationStatusLog , SavedJob,AuditLog
 
 class EmployerSerializer(serializers.ModelSerializer):
     class Meta:
@@ -89,3 +89,10 @@ class SavedJobSerializer(serializers.ModelSerializer):
             "saved_at",
             "job",
         ]
+
+
+class AuditLogSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = AuditLog
+        fields = "__all__"

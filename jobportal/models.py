@@ -7,6 +7,7 @@ class Employer(models.Model):
     website = models.URLField(blank=True)
     location = models.CharField(max_length=100, blank=True)
     is_deleted=models.BooleanField(default=False)
+    is_approved=models.BooleanField(default=False)
 
     def __str__(self):
         return self.company_name
@@ -49,6 +50,7 @@ class Job(models.Model):
     deadline=models.DateField()
     created_at=models.DateTimeField(auto_now_add=True)
     updated_at=models.DateTimeField(auto_now=True)
+    is_flagged = models.BooleanField(default=False)
 
     def __str__(self):
         return self.title
@@ -121,5 +123,15 @@ class SavedJob(models.Model):
         return f"{self.candidate.user.username} - {self.job.title}"
     
 
+class AuditLog(models.Model):
+    admin = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE
+    )
 
+    action = models.CharField(max_length=255)
 
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.admin.username} - {self.action}"
