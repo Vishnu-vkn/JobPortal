@@ -25,7 +25,8 @@ urlpatterns = [
     path("",include("core.urls")),
     path("",include("jobs.urls")),
     path("api/",include("accounts.urls")),
-    path("api/",include("jobportal.urls"))
+    path("api/",include("jobportal.urls")),
+    path("api/resume/", include("resume_parser.urls")),
 ]
 
 urlpatterns+=static(

@@ -48,7 +48,8 @@ INSTALLED_APPS = [
     'jobportal',
     'accounts',
     "rest_framework_simplejwt.token_blacklist",
-    "django_filters"
+    "django_filters",
+    "resume_parser"
 ]
 
 MIDDLEWARE = [
