@@ -40,6 +40,8 @@ class ApplicationSerializer(serializers.ModelSerializer):
             "status",
             "applied_at",
             "resume_snapshot",
+            "ats_score",
+            "matched_skills"
         ]
 
 class ApplicationStatusSerializer(serializers.ModelSerializer):
@@ -96,3 +98,24 @@ class AuditLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = AuditLog
         fields = "__all__"
+
+class RankedCandidateSerializer(serializers.ModelSerializer):
+
+    candidate_name = serializers.CharField(
+        source="candidate.user.first_name",
+        read_only=True
+    )
+
+    candidate_email = serializers.EmailField(
+        source="candidate.user.email",
+        read_only=True
+    )
+
+    class Meta:
+        model = Application
+        fields = [
+            "candidate_name",
+            "candidate_email",
+            "ats_score",
+            "matched_skills"
+        ]

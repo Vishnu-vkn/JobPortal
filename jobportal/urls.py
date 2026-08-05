@@ -5,7 +5,7 @@ from .views import LatestJobView,FeaturedJobView,ApplyJobView,MyApplicationView,
 from .views import EmployerJobListView,EmployerJobUpdateView,EmployerCloseJobView,EmployerApplicationListView
 from .views import EmployerDashboardAPI,CandidateDashboardAPI , ApplicationTimelineView , SaveJobView,UnsaveJobView , SavedJobListView
 from .views import RecommendedJobListView , ApproveEmployerView, BlockUserView,AdminJobListView,AdminJobDeleteView,AdminDashboardView
-from .views import UserGrowthView,JobActivityView,FlagJobView,AuditLogListView
+from .views import UserGrowthView,JobActivityView,FlagJobView,AuditLogListView,RankedCandidateListView
 
 router=DefaultRouter()
 
@@ -42,7 +42,8 @@ urlpatterns=[
     path("admin/usergrowth/",UserGrowthView.as_view(),name="user-growth",),
     path("admin/jobactivity/",JobActivityView.as_view(),name="job-activity",),
     path("admin/jobs/<int:pk>/flag/",FlagJobView.as_view(),name="flag-job",),
-    path("admin/auditlogs/",AuditLogListView.as_view(),name="audit-logs",)
+    path("admin/auditlogs/",AuditLogListView.as_view(),name="audit-logs",),
+    path("employer/jobs/<int:job_id>/rankedcandidates/",RankedCandidateListView.as_view(),name="ranked-candidates",),
 ]
 
 urlpatterns+=router.urls

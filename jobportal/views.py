@@ -2,7 +2,7 @@ from rest_framework import viewsets
 from rest_framework import generics
 from .models import Employer,Candidate , Job,Application,ApplicationStatusLog,SavedJob,AuditLog
 from .serializers import EmployerSerializer,CandidateSerializer,JobSerializer,ApplicationSerializer,ApplicationStatusSerializer,RecentApplicationSerializer
-from .serializers import ApplicationStatusLogSerializer ,  SavedJobSerializer,AuditLogSerializer
+from .serializers import ApplicationStatusLogSerializer ,  SavedJobSerializer,AuditLogSerializer,RankedCandidateSerializer
 from rest_framework.permissions import IsAuthenticated, AllowAny ,IsAdminUser
 from rest_framework.response import Response
 from rest_framework import status
@@ -20,6 +20,7 @@ from rest_framework.exceptions import PermissionDenied
 from accounts.models import CustomUser
 from django.utils import timezone
 from datetime import timedelta
+from .services import calculate_ats_score
 
 
 #Code Refactoring
@@ -238,11 +239,19 @@ class ApplyJobView(APIView):
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+
+        #step new calculate atsscore
+        ats_result=calculate_ats_score(job,candidate)
+
+        
         #step 6 create application
         application=Application.objects.create(
             candidate=candidate,
             job=job,
-            resume_snapshot=candidate.resume
+            resume_snapshot=candidate.resume,
+            ats_score=ats_result["score"],
+            matched_skills=ats_result["matched_skills"]
         )
 
         #step 7 serialize response
@@ -710,3 +719,37 @@ class AuditLogListView(generics.ListAPIView):
     queryset = AuditLog.objects.all().order_by("-created_at")
     serializer_class = AuditLogSerializer
     permission_classes = [IsAdminUser]
+
+
+class RankedCandidateListView(APIView):
+    permission_classes=[IsAuthenticated,IsEmployer]
+
+    def get(self,request,job_id):
+
+        job=get_object_or_404(
+            Job,
+            id=job_id,
+            employer=request.user.employer
+        )
+
+        applications=(Application.objects.filter(job=job).order_by("-ats_score"))
+
+        serializer=RankedCandidateSerializer(applications,many=True)
+
+        data = serializer.data
+
+        for index, candidate in enumerate(data, start=1):
+            candidate["rank"] = index
+
+            score = float(candidate["ats_score"])
+
+            if score >= 90:
+                candidate["match_label"] = "Excellent Match"
+            elif score >= 75:
+                candidate["match_label"] = "Strong Match"
+            elif score >= 60:
+                candidate["match_label"] = "Good Match"
+            else:
+                candidate["match_label"] = "Needs Review"
+
+        return Response(data)
