@@ -20,7 +20,7 @@ from rest_framework.exceptions import PermissionDenied
 from accounts.models import CustomUser
 from django.utils import timezone
 from datetime import timedelta
-from .services import calculate_ats_score
+from .services import calculate_ats_score,check_eligibility,send_notification
 
 
 #Code Refactoring
@@ -254,6 +254,10 @@ class ApplyJobView(APIView):
             matched_skills=ats_result["matched_skills"]
         )
 
+        
+        # Step 6.5 Auto Shortlist / Reject
+        check_eligibility(application)
+
         #step 7 serialize response
         serializer=ApplicationSerializer(application)
         return Response(
@@ -340,12 +344,22 @@ class ApplicationStatusUpdateView(UpdateAPIView):
         
         response= super().update(request,*args,**kwargs)
 
-        ApplicationStatusLog.objects.create(
-            application=application,
-            previous_status=current_status,
-            new_status=new_status,
-            changed_by=request.user.employer
-        )
+        if response.status_code < 400:
+            #create status log
+            ApplicationStatusLog.objects.create(
+                application=application,
+                previous_status=current_status,
+                new_status=new_status,
+                changed_by=request.user.employer
+            )
+
+            # Create notification
+            send_notification(
+                candidate=application.candidate,
+                application=application,
+                title=f"Application {new_status}",
+                message=f"Your application for '{application.job.title}' has been updated to '{new_status}'."
+            )
 
         return response
     

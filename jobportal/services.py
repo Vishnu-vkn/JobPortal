@@ -1,5 +1,6 @@
 #ATS Logic
 from decimal import Decimal
+from .models import Application,ApplicationStatusLog,Notification
 
 def calculate_ats_score(job,candidate):
     #calculate ats score between a job and a candidate
@@ -59,3 +60,46 @@ def calculate_ats_score(job,candidate):
         "score":total_score,
         "matched_skills":matched_skills
     }
+
+
+def check_eligibility(application):
+
+    previous_status=application.status
+
+    if application.ats_score>=application.job.minimum_score:
+        new_status=Application.Status.SHORTLISTED
+    else:
+        new_status=Application.Status.REJECTED
+
+    application.status=new_status
+    application.save(update_fields=["status"])
+
+    ApplicationStatusLog.objects.create(
+        application=application,
+        previous_status=previous_status,
+        new_status=new_status,
+        changed_by=None
+    )
+
+    if new_status == Application.Status.SHORTLISTED:
+        send_notification(
+            candidate=application.candidate,
+            application=application,
+            title="Application Shortlisted",
+            message=f"Congratulations! You have been shortlisted for {application.job.title}."
+        )
+    else:
+        send_notification(
+            candidate=application.candidate,
+            application=application,
+            title="Application Rejected",
+            message=f"Unfortunately, your application for {application.job.title} was not shortlisted."
+        )
+
+def send_notification(candidate, application, title, message):
+    Notification.objects.create(
+        candidate=candidate,
+        application=application,
+        title=title,
+        message=message
+    )

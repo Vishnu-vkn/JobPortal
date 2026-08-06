@@ -1,10 +1,11 @@
 from django.contrib import admin
-from .models import  Employer, Candidate, Job, Application,ApplicationStatusLog,AuditLog
+from .models import  Employer, Candidate, Job, Application,ApplicationStatusLog,AuditLog,Notification
 
 
 admin.site.register(Job)
 admin.site.register(Application)
 admin.site.register(AuditLog)
+admin.site.register(Notification)
 
 @admin.register(ApplicationStatusLog)
 class ApplicationStatusLogAdmin(admin.ModelAdmin):
@@ -20,7 +21,7 @@ class ApplicationStatusLogAdmin(admin.ModelAdmin):
         return False
 
     def has_delete_permission(self, request, obj=None):
-        return False
+        return True
 
 
 

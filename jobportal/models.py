@@ -51,6 +51,7 @@ class Job(models.Model):
     created_at=models.DateTimeField(auto_now_add=True)
     updated_at=models.DateTimeField(auto_now=True)
     is_flagged = models.BooleanField(default=False)
+    minimum_score=models.PositiveBigIntegerField(default=60)
 
     def __str__(self):
         return self.title
@@ -89,13 +90,41 @@ class ApplicationStatusLog(models.Model):
     application=models.ForeignKey(Application,on_delete=models.CASCADE,related_name="status_logs")
     previous_status=models.CharField(max_length=30,choices=Application.Status.choices)
     new_status=models.CharField(max_length=30,choices=Application.Status.choices)
-    changed_by=models.ForeignKey(Employer,on_delete=models.CASCADE,related_name="status_updates")
+    changed_by=models.ForeignKey(Employer,on_delete=models.CASCADE,related_name="status_updates",null=True,blank=True)
     changed_at=models.DateTimeField(auto_now_add=True)
     class Meta:
         ordering = ["-changed_at"]
 
     def __str__(self):
-        return f"{self.application} | {self.previous_status} → {self.new_status} | {self.changed_by}"
+        actor = self.changed_by if self.changed_by else "System"
+        return f"{self.application} | {self.previous_status} → {self.new_status} | {actor}"
+
+class Notification(models.Model):
+    candidate = models.ForeignKey(
+        Candidate,
+        on_delete=models.CASCADE,
+        related_name="notifications"
+    )
+
+    application = models.ForeignKey(
+        Application,
+        on_delete=models.CASCADE,
+        related_name="notifications"
+    )
+
+    title = models.CharField(max_length=255)
+
+    message = models.TextField()
+
+    is_read = models.BooleanField(default=False)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.candidate.user.username} - {self.title}"
 
 class SavedJob(models.Model):
 
