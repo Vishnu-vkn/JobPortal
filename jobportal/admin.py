@@ -1,11 +1,12 @@
 from django.contrib import admin
-from .models import  Employer, Candidate, Job, Application,ApplicationStatusLog,AuditLog,Notification
+from .models import  Employer, Candidate, Job, Application,ApplicationStatusLog,AuditLog,Notification,EmailLog
 
 
 admin.site.register(Job)
 admin.site.register(Application)
 admin.site.register(AuditLog)
 admin.site.register(Notification)
+
 
 @admin.register(ApplicationStatusLog)
 class ApplicationStatusLogAdmin(admin.ModelAdmin):
@@ -42,4 +43,27 @@ class EmployerAdmin(admin.ModelAdmin):
         "company_name",
         "location",
         "is_deleted",
+    )
+
+@admin.register(EmailLog)
+class EmailLogAdmin(admin.ModelAdmin):
+    list_display = (
+        "recipient",
+        "subject",
+        "status",
+        "sent_at",
+    )
+
+    readonly_fields = (
+        "sent_at",
+    )
+
+    search_fields = (
+        "recipient",
+        "subject",
+    )
+
+    list_filter = (
+        "status",
+        "sent_at",
     )

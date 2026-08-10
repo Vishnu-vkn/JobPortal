@@ -1,6 +1,9 @@
 #ATS Logic
 from decimal import Decimal
-from .models import Application,ApplicationStatusLog,Notification
+from .models import Application,ApplicationStatusLog,Notification,EmailLog
+from django.conf import settings
+from django.core.mail import send_mail
+from django.template.loader import render_to_string
 
 def calculate_ats_score(job,candidate):
     #calculate ats score between a job and a candidate
@@ -48,13 +51,6 @@ def calculate_ats_score(job,candidate):
 
     total_score=round(skills_score+experience_score+education_score,2)
 
-    print("Job Skills:", job_skills)
-    print("Candidate Skills:", candidate_skills)
-    print("Matched Skills:", matched_skills)
-    print("Skills Score:", skills_score)
-    print("Experience Score:", experience_score)
-    print("Education Score:", education_score)
-    print("Total:", total_score)
 
     return{
         "score":total_score,
@@ -88,6 +84,10 @@ def check_eligibility(application):
             title="Application Shortlisted",
             message=f"Congratulations! You have been shortlisted for {application.job.title}."
         )
+
+        from .tasks import send_shortlisted_email_task
+        send_shortlisted_email_task.delay(application.id)
+
     else:
         send_notification(
             candidate=application.candidate,
@@ -96,6 +96,9 @@ def check_eligibility(application):
             message=f"Unfortunately, your application for {application.job.title} was not shortlisted."
         )
 
+        from .tasks import send_rejected_email_task
+        send_rejected_email_task.delay(application.id)
+
 def send_notification(candidate, application, title, message):
     Notification.objects.create(
         candidate=candidate,
@@ -103,3 +106,129 @@ def send_notification(candidate, application, title, message):
         title=title,
         message=message
     )
+
+
+#day27email
+def send_application_received_email(application):
+    candidate = application.candidate
+    job = application.job
+
+    html_message = render_to_string(
+    "emails/application_received.html",
+    {
+        "candidate_name": candidate.user.first_name,
+        "job_title": job.title,
+    }
+    )  
+
+    try:
+        send_mail(
+            subject="Application Received",
+            message=(
+                f"Hi {candidate.user.first_name},\n\n"
+                f"We have successfully received your application for "
+                f" {job.title}."
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[candidate.user.email],
+            html_message=html_message,
+            fail_silently=False,
+        )
+
+        EmailLog.objects.create(
+            recipient=candidate.user.email,
+            subject="Application Received",
+            status=EmailLog.Status.SUCCESS
+        )
+
+    except Exception as e:
+        EmailLog.objects.create(
+            recipient=candidate.user.email,
+            subject="Application Received",
+            status=EmailLog.Status.FAILED,
+            error_message=str(e),
+        )
+
+        raise
+
+def send_shortlisted_email(application):
+    candidate = application.candidate
+    job = application.job
+
+    html_message = render_to_string(
+        "emails/shortlisted.html",
+        {
+            "candidate_name": candidate.user.first_name,
+            "job_title": job.title,
+        },
+    )
+
+    try:
+        send_mail(
+            subject="Application Shortlisted",
+            message=(
+                f"Congratulations {candidate.user.first_name},\n\n"
+                f"Your application for {job.title} has been shortlisted."
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[candidate.user.email],
+            html_message=html_message,
+            fail_silently=False,
+        )
+
+        EmailLog.objects.create(
+                    recipient=candidate.user.email,
+                    subject="Application Shortlisted",
+                    status=EmailLog.Status.SUCCESS
+        )
+    except Exception as e:
+        EmailLog.objects.create(
+                    recipient=candidate.user.email,
+                    subject="Application Shortlisted",
+                    status=EmailLog.Status.FAILED,
+                    error_message=str(e),
+                )
+        raise
+        
+
+def send_rejected_email(application):
+
+    candidate = application.candidate
+    job = application.job
+
+    html_message = render_to_string(
+        "emails/rejected.html",
+        {
+            "candidate_name": candidate.user.first_name,
+            "job_title": job.title,
+        },
+    )
+
+    try:
+
+        send_mail(
+            subject="Application Rejected",
+            message=(
+                f"Hello {candidate.user.first_name},\n\n"
+                f"Thank you for applying for {job.title}."
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[candidate.user.email],
+            html_message=html_message,
+            fail_silently=False,
+        )
+        EmailLog.objects.create(
+                            recipient=candidate.user.email,
+                            subject="Application Rejected",
+                            status=EmailLog.Status.SUCCESS
+                )
+
+    except Exception as e:
+        EmailLog.objects.create(
+                            recipient=candidate.user.email,
+                            subject="Application Rejected",
+                            status=EmailLog.Status.FAILED,
+                            error_message=str(e),
+                        )
+        raise
+

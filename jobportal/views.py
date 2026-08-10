@@ -20,7 +20,7 @@ from rest_framework.exceptions import PermissionDenied
 from accounts.models import CustomUser
 from django.utils import timezone
 from datetime import timedelta
-from .services import calculate_ats_score,check_eligibility,send_notification
+from .services import calculate_ats_score,check_eligibility,send_notification,send_application_received_email
 
 
 #Code Refactoring
@@ -143,7 +143,7 @@ class PublicJobListView(ListAPIView):
     pagination_class=CustomPagination
 
     def get_queryset(self):
-        queryset=queryset = Job.objects.filter(status=True)
+        queryset=Job.objects.filter(status=True)
     
         #filtering
         location=self.request.query_params.get("location")
@@ -254,7 +254,11 @@ class ApplyJobView(APIView):
             matched_skills=ats_result["matched_skills"]
         )
 
-        
+        #send confirmation mail
+        from .tasks import send_application_received_email_task
+        send_application_received_email_task.delay(application.id)
+
+                
         # Step 6.5 Auto Shortlist / Reject
         check_eligibility(application)
 
