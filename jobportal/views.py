@@ -423,7 +423,7 @@ class EmployerApplicationListView(ListAPIView):
 
         return(
             Application.objects.filter(job=job)
-            .select_related("candidate","job","candidate__user")
+            .select_related("candidate__user")
             .order_by("-applied_at")
         )
 
