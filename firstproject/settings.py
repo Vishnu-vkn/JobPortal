@@ -181,3 +181,13 @@ LOGGING = {
         },
     },
 }
+
+
+from celery.schedules import crontab
+
+CELERY_BEAT_SCHEDULE = {
+    "run-periodic-test-every-minute": {
+        "task": "jobportal.tasks.periodic_test_task",
+        "schedule": 60.0,
+    },
+}
