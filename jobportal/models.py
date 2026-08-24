@@ -26,6 +26,7 @@ class Candidate(models.Model):
     phone=models.CharField(max_length=15,blank=True)
     address=models.TextField(blank=True)
     is_deleted=models.BooleanField(default=False)
+    is_available = models.BooleanField(default=True)
     def __str__(self):
         return self.user.username
     
@@ -65,6 +66,12 @@ class Application(models.Model):
         INTERVIEW_SCHEDULED="Interview Scheduled","Interview Scheduled"
         REJECTED="Rejected","Rejected"
         SELECTED="Selected","Selected"
+        
+    class AICallStatus(models.TextChoices):
+        QUEUED = "Queued", "Queued"
+        IN_PROGRESS = "In Progress", "In Progress"
+        COMPLETED = "Completed", "Completed"
+        FAILED = "Failed", "Failed"
 
     candidate=models.ForeignKey(Candidate,on_delete=models.CASCADE,related_name="applications")
     job=models.ForeignKey(Job,on_delete=models.CASCADE,related_name="applications")
@@ -73,6 +80,13 @@ class Application(models.Model):
     resume_snapshot=models.FileField(upload_to="application_resumes/",blank=True,null=True)
     ats_score=models.DecimalField(max_digits=5,decimal_places=2,default=0)
     matched_skills=models.JSONField(default=list,blank=True)
+    ai_call_status = models.CharField(max_length=20,choices=AICallStatus.choices,default=AICallStatus.QUEUED)
+
+    ai_call_queued_at = models.DateTimeField(null=True,blank=True)
+    ai_call_started_at = models.DateTimeField(null=True,blank=True)
+    ai_call_completed_at = models.DateTimeField(null=True,blank=True)
+    ai_call_failed_at = models.DateTimeField(null=True,blank=True)
+    ai_call_retry_count = models.PositiveIntegerField(default=0)
 
     class Meta:
         constraints=[

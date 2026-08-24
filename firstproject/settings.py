@@ -119,6 +119,7 @@ AUTH_PASSWORD_VALIDATORS = [
 LANGUAGE_CODE = 'en-us'
 
 TIME_ZONE = 'Asia/Dubai'
+CELERY_TIMEZONE = "Asia/Dubai"
 
 USE_I18N = True
 

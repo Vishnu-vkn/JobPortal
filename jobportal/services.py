@@ -4,6 +4,12 @@ from .models import Application,ApplicationStatusLog,Notification,EmailLog
 from django.conf import settings
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
+from datetime import time,datetime,timedelta
+from django.utils import timezone
+
+
+CALL_START_TIME = time(9, 0)    # 09:00 AM
+CALL_END_TIME = time(18, 0)     # 06:00 PM
 
 def calculate_ats_score(job,candidate):
     #calculate ats score between a job and a candidate
@@ -232,3 +238,114 @@ def send_rejected_email(application):
                         )
         raise
 
+#day33
+def is_ats_eligible(application):
+    return application.ats_score >= application.job.minimum_score
+
+def is_job_active(application):
+    return application.job.status
+
+def is_candidate_available(application):
+    return application.candidate.is_available
+
+def check_application_eligibility(application):
+    if not is_ats_eligible(application):
+        return False, "ATS score is below the required threshold."
+
+    if not is_job_active(application):
+        return False, "Job is not active."
+
+    if not is_candidate_available(application):
+        return False, "Candidate is not available."
+
+    return True, "Application is eligible."
+
+def trigger_ai_call(application):
+
+    eligible, reason = check_application_eligibility(application)
+
+    if not eligible:
+        return {
+            "triggered": False,
+            "reason": reason
+        }
+
+    if not is_within_calling_window():
+        return {
+            "triggered": False,
+            "reason": "Current time is outside the AI calling window."
+        }
+        
+    return {
+        "triggered": True,
+        "reason": "Application is eligible for AI call."
+    }
+    
+    
+def is_within_calling_window(current_time=None):
+    if current_time is None:
+        current_time = timezone.localtime().time()
+
+    return CALL_START_TIME <= current_time < CALL_END_TIME
+
+def get_next_call_time(current_datetime=None):
+
+    if current_datetime is None:
+        current_datetime = timezone.localtime()
+
+    current_time = current_datetime.time()
+
+    if CALL_START_TIME <= current_time < CALL_END_TIME:
+        return current_datetime
+
+    if current_time < CALL_START_TIME:
+        return current_datetime.replace(
+            hour=CALL_START_TIME.hour,
+            minute=CALL_START_TIME.minute,
+            second=0,
+            microsecond=0
+        )
+
+    next_day = current_datetime + timedelta(days=1)
+
+    return next_day.replace(
+        hour=CALL_START_TIME.hour,
+        minute=CALL_START_TIME.minute,
+        second=0,
+        microsecond=0
+    )
+    
+def schedule_ai_call(application):
+    eligible, reason = check_application_eligibility(application)
+
+    if not eligible:
+        return {
+            "scheduled": False,
+            "reason": reason
+        }
+
+    scheduled_time = get_next_call_time()
+
+    from django.utils import timezone
+    from .tasks import trigger_ai_call_task
+
+    trigger_ai_call_task.apply_async(
+        args=[application.id],
+        eta=scheduled_time
+    )
+
+    # Mark call as queued
+    application.ai_call_status = Application.AICallStatus.QUEUED
+    application.ai_call_queued_at = timezone.now()
+    application.save(
+        update_fields=[
+            "ai_call_status",
+            "ai_call_queued_at"
+        ]
+    )
+
+    return {
+        "scheduled": True,
+        "scheduled_time": scheduled_time,
+        "reason": "AI call scheduled successfully."
+    }

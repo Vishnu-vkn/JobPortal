@@ -21,6 +21,7 @@ from accounts.models import CustomUser
 from django.utils import timezone
 from datetime import timedelta
 from .services import calculate_ats_score,check_eligibility,send_notification,send_application_received_email
+from .services import trigger_ai_call
 
 
 #Code Refactoring
@@ -261,6 +262,9 @@ class ApplyJobView(APIView):
                 
         # Step 6.5 Auto Shortlist / Reject
         check_eligibility(application)
+        
+        # Day 33 - Event-based AI call trigger
+        trigger_result = trigger_ai_call(application)
 
         #step 7 serialize response
         serializer=ApplicationSerializer(application)

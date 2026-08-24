@@ -48,17 +48,75 @@ def parse_resume_task(application_id):
 
     return "Resume parsing completed"
 
-@shared_task
-def trigger_ai_call_task(application_id):
+@shared_task(
+    bind=True,
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    max_retries=3,
+)
+def trigger_ai_call_task(self, application_id):
+    from django.utils import timezone
+
     application = Application.objects.get(id=application_id)
+
+    # Task has started
+    application.ai_call_status = Application.AICallStatus.IN_PROGRESS
+    application.ai_call_started_at = timezone.now()
+
+    application.save(
+        update_fields=[
+            "ai_call_status",
+            "ai_call_started_at",
+        ]
+    )
 
     print(f"Triggering AI call for application: {application.id}")
 
-    # AI call logic will run here
+    try:
+        # AI call logic will run here
+        # Temporary failure test
 
-    return "AI call completed"
+        application.ai_call_status = Application.AICallStatus.COMPLETED
+        application.ai_call_completed_at = timezone.now()
 
-@shared_task
-def periodic_test_task():
-    print("Periodic Celery task is running!")
-    return "Periodic task completed"
+        application.save(
+            update_fields=[
+                "ai_call_status",
+                "ai_call_completed_at",
+            ]
+        )
+
+        return "AI call completed"
+
+    except Exception:
+        retry_count = self.request.retries + 1
+
+        application.ai_call_retry_count = min(
+            retry_count,
+            self.max_retries
+        )
+
+        if self.request.retries >= self.max_retries:
+            # Final attempt failed
+            application.ai_call_status = Application.AICallStatus.FAILED
+            application.ai_call_failed_at = timezone.now()
+
+            application.save(
+                update_fields=[
+                    "ai_call_status",
+                    "ai_call_failed_at",
+                    "ai_call_retry_count",
+                ]
+            )
+        else:
+            # Celery will retry
+            application.ai_call_status = Application.AICallStatus.QUEUED
+
+            application.save(
+                update_fields=[
+                    "ai_call_status",
+                    "ai_call_retry_count",
+                ]
+            )
+
+        raise
