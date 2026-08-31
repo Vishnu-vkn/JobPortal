@@ -204,3 +204,72 @@ class EmailLog(models.Model):
 
     def __str__(self):
         return f"{self.recipient} - {self.subject}"
+
+class AIInterviewSession(models.Model):
+    application = models.ForeignKey(
+        Application,
+        on_delete=models.CASCADE,
+        related_name="ai_interview_sessions"
+    )
+
+    started_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    transcript = models.JSONField(default=dict, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"AI Interview - {self.application}"
+    
+class AIQuestion(models.Model):
+    session = models.ForeignKey(
+        AIInterviewSession,
+        on_delete=models.CASCADE,
+        related_name="questions"
+    )
+
+    question_text = models.TextField()
+    question_number = models.PositiveIntegerField()
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Question {self.question_number} - Session {self.session.id}"
+    
+class AIAnswer(models.Model):
+    question = models.OneToOneField(
+        AIQuestion,
+        on_delete=models.CASCADE,
+        related_name="answer"
+    )
+
+    answer_text = models.TextField()
+    answered_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Answer - Question {self.question.question_number}"
+    
+class CallLog(models.Model):
+    session = models.ForeignKey(
+        AIInterviewSession,
+        on_delete=models.CASCADE,
+        related_name="call_logs"
+    )
+
+    triggered_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ai_call_logs"
+    )
+
+    triggered_at = models.DateTimeField(auto_now_add=True)
+
+    reason = models.TextField()
+
+    def __str__(self):
+        return f"AI Call Log - Session {self.session.id}"
+    

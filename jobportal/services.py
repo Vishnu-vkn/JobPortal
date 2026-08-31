@@ -1,6 +1,6 @@
 #ATS Logic
 from decimal import Decimal
-from .models import Application,ApplicationStatusLog,Notification,EmailLog
+from .models import Application,ApplicationStatusLog,Notification,EmailLog,AIInterviewSession,CallLog
 from django.conf import settings
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
@@ -260,7 +260,7 @@ def check_application_eligibility(application):
 
     return True, "Application is eligible."
 
-def trigger_ai_call(application):
+def trigger_ai_call(application,triggered_by=None):
 
     eligible, reason = check_application_eligibility(application)
 
@@ -276,11 +276,19 @@ def trigger_ai_call(application):
             "reason": "Current time is outside the AI calling window."
         }
         
-    return {
-        "triggered": True,
-        "reason": "Application is eligible for AI call."
-    }
+    session = AIInterviewSession.objects.create(
+    application=application)
+        
+    reason="Application is eligible for AI Call"
+    CallLog.objects.create(
+        session=session,
+        triggered_by=triggered_by,
+        reason=reason
+    )
     
+    return {
+    "triggered": True,
+    "reason": reason }
     
 def is_within_calling_window(current_time=None):
     if current_time is None:
@@ -349,3 +357,13 @@ def schedule_ai_call(application):
         "scheduled_time": scheduled_time,
         "reason": "AI call scheduled successfully."
     }
+    
+def save_transcript(session, conversation):
+
+    session.transcript = {
+        "conversation": conversation
+    }
+
+    session.save(update_fields=["transcript", "updated_at"])
+
+    return session
